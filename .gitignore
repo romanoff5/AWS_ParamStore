@@ -1,0 +1,16 @@
+/venv
+.venv
+.idea
+/.idea
+/aws/
+/reports/
+/sandmap/
+/WhatWeb/
+/.scannerwork/
+/aws/
+/bandit-env/
+/cs-suite/
+/reports/
+/sandmap/
+/venv/
+/WhatWeb/
