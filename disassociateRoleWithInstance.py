@@ -137,13 +137,13 @@ print('listAttachedRolePol', listAttachedRolePol)
 # print('Cannot delete entity', i,', must delete policies first.')
 # pass
 
-listOfassociations = ec2.describe_iam_instance_profile_associations(
-    Filters=[
-        {"Name": "instance-id", "Values": [InstanceID]}
-    ]
-)
-print('listOfassociations: ', listOfassociations)
-if listOfassociations['IamInstanceProfileAssociations'] != '[]':
-    associationID = listOfassociations['IamInstanceProfileAssociations'][0]['AssociationId']
-    associationState = listOfassociations['IamInstanceProfileAssociations'][0]['State']
-    print("Association ID: ", associationID, '\nAssociation state: ', associationState)
+# listOfassociations = ec2.describe_iam_instance_profile_associations(
+#     Filters=[
+#         {"Name": "instance-id", "Values": [InstanceID]}
+#     ]
+# )
+# print('listOfassociations: ', listOfassociations)
+# if listOfassociations['IamInstanceProfileAssociations'] != '[]':
+#     associationID = listOfassociations['IamInstanceProfileAssociations'][0]['AssociationId']
+#     associationState = listOfassociations['IamInstanceProfileAssociations'][0]['State']
+#     print("Association ID: ", associationID, '\nAssociation state: ', associationState)
