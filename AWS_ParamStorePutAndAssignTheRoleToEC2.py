@@ -1,8 +1,10 @@
 from getpass import getpass
+from datetime import datetime
 import logging
 import boto3
 import botocore
 import pprint
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +47,7 @@ ec2 = session.client('ec2')
 
 
 def create_alias_for_kms_key():
-    # global kms_id_is
+    global kms_id_is
     # global kms_alias_name
     # #Create the KMS Alias:
     try:
@@ -117,6 +119,8 @@ def rchop(string, suffix):
 
 
 def get_parameters_path():
+    global parameter_arn_is
+    global secret_name
     parameters_path = rchop(parameter_arn_is, secret_name) + '*'
     print('Resource ARN for EC2 IAM Policy:', parameter_arn_is)
     return parameters_path
@@ -140,7 +144,7 @@ def get_var():
     iam_policy_description_for_the_kms = 'Project:' + project_name + '- Grants GetParameter and Decrypt permissions'
     instance_profile = input('EC2InstanceProfile: ')
     ec2_get_ssm_role = project_name + 'EC2InstanceSSMrole'
-    kms_alias_name = 'alias/' + project_name + '/ec2/kms'
+    kms_alias_name = 'alias/' + project_name + datetime.now().strftime("%d/%m/%Y/-%H-%M-%S") + '/ec2/kms'
 
 
 
@@ -208,11 +212,12 @@ def add_param_question():
                    '\nDo you want to add one more parameter(y/n)?')
     if answer == 'y' or answer == 'Y':
         put_parameter()
-    elif menu_answer == '1':
-        create_ec2_policy()
     # return to menu
     elif menu_answer == '2':
         menu()
+    # elif menu_answer == '1':
+    #     create_ec2_policy()
+
 
 
 
@@ -222,6 +227,8 @@ def add_param_question():
 
 def put_parameter():
     global key_id_is
+    global parameter_arn_is
+    global secret_name
     if menu_answer == '2' and key_id_is == '':
         key_id_is = input('Secret Key Alias ARN (for ex. arn:aws:kms:us-east-1:4...2:key/1...3-9): ')
     secret_path = input('secret Path (for ex. /nda/ or leave it empty):')
@@ -242,8 +249,7 @@ def put_parameter():
     print('Encrypted', secret_name_full, 'Value:', response['Parameter']['Value'])
     parameter_arn_is = response['Parameter']['ARN']
     print('Parameter', secret_name_full, 'ARN:', response['Parameter']['ARN'])
-    if menu_answer == '2':
-        add_param_question()
+    add_param_question()
 
 
 
@@ -298,6 +304,7 @@ def create_instance_profile():
 
 # Create a Role:
 def create_role():
+    global assume_role_policy_document
     try:
         response = iam.create_role(RoleName=ec2_get_ssm_role,
                                    AssumeRolePolicyDocument=assume_role_policy_document)
@@ -462,7 +469,7 @@ def menu():
         create_iam_policy_for_kms()
         create_alias_for_kms_key()
         put_parameter()
-        add_param_question()
+        create_ec2_policy()
         create_instance_profile()
         create_role()
         associate_role()
