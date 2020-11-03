@@ -5,16 +5,30 @@ import boto3
 import botocore
 import pprint
 
-
 logger = logging.getLogger(__name__)
 
-
+global key_id_is
+global iam_policy_ec2arn
+global iam_policy_ec2
+global iamPolicyKMS
+global menu_answer
+global parametersPath
+global key_arn_is
+global association_id
+global instance_id
+global instance_profile_arn
+global secret_path
+global secret_name
+global secret_value
+global secret_description
+global secret_name_full
+global parameter_arn_is
+global kms_keys
 
 welcome = "Welcome to the AWS SSM ParamStore. The app may put secrets to ParamStore, create related policies, roles, and instance profile"
 print('-' * len(welcome))
 print(welcome)
 print('-' * len(welcome))
-
 
 # List AWS regions
 ec2 = boto3.client('ec2')
@@ -57,7 +71,6 @@ def create_alias_for_kms_key():
         raise ValueError('The parameters you provided are incorrect: {}'.format(error))
 
 
-
 def create_iam_policy_for_kms():
     # JSON data:
     iam_policy_kms = """{
@@ -92,7 +105,6 @@ def create_iam_policy_for_kms():
         pass
 
 
-
 def create_cmk():
     global key_arn_is
     global key_id_is
@@ -107,7 +119,6 @@ def create_cmk():
     key_id_is = response['KeyMetadata']['KeyId']
     print("Key ARN:", key_arn_is)
     print("Key ID:", key_id_is)
-
 
 
 # Get Arn for EC2 Policy with * (all access)
@@ -147,7 +158,6 @@ def get_var():
     kms_alias_name = 'alias/' + project_name + datetime.now().strftime("%d/%m/%Y/-%H-%M-%S") + '/ec2/kms'
 
 
-
 # Grant Permissions to Instance Profile:
 # Now we will create a policy that can only decrypt and
 # read values from SSM that matches the path: '/nda/mysql/mysql_*. '
@@ -156,6 +166,7 @@ def get_var():
 
 def create_ec2_policy():
     global assume_role_policy_document
+    global iam_policy_ec2arn
     global iam_policy_ec2
     # The policy grants GetParameter and Decrypt
     # permissions and will be used for EC2 instance profile
@@ -199,6 +210,7 @@ def create_ec2_policy():
     try:
         response = iam.create_policy(PolicyName=iam_policy_name_for_the_ec2, PolicyDocument=iam_policy_ec2,
                                      Description=iam_policy_name_for_the_ec2)
+        iam_policy_ec2arn = response['Policy']['Arn']
         print("Created IAM Policy ARN:", response['Policy']['Arn'])
         print("Policy Name:", response['Policy']['PolicyName'])
     except botocore.exceptions.ParamValidationError as error:
@@ -215,10 +227,6 @@ def add_param_question():
     # return to menu
     elif menu_answer == '2':
         menu()
-    # elif menu_answer == '1':
-    #     create_ec2_policy()
-
-
 
 
 # Publish the Secrets to SSM:
@@ -252,8 +260,6 @@ def put_parameter():
     add_param_question()
 
 
-
-
 def find_active_kms_keys(key_arn):
     response = kms.describe_key(KeyId=key_arn)['KeyMetadata']['KeyState']
     return response
@@ -279,6 +285,7 @@ def list_keys_arns():
 
 # Create instance profile:
 def create_instance_profile():
+    global instance_profile_arn
     try:
         response = iam.create_instance_profile(InstanceProfileName=instance_profile)
         print("Created instance profile:", instance_profile)
@@ -305,6 +312,8 @@ def create_instance_profile():
 # Create a Role:
 def create_role():
     global assume_role_policy_document
+    global iam_policy_ec2arn
+    global ec2_get_ssm_role
     try:
         response = iam.create_role(RoleName=ec2_get_ssm_role,
                                    AssumeRolePolicyDocument=assume_role_policy_document)
@@ -341,6 +350,7 @@ def associate_role():
 
 # Attach the Policy to the Role:
 def attach_policy():
+    global iam_policy_ec2
     try:
         response = iam.put_role_policy(RoleName=ec2_get_ssm_role, PolicyName=iam_policy_name_for_the_ec2,
                                        PolicyDocument=iam_policy_ec2)
@@ -354,6 +364,7 @@ def attach_policy():
 
 
 def disassociate_role_with_instance():
+    global association_id
     answer = input("Do you want to remove the association(y)?")
     if answer == 'y' or answer == 'Y':
         response = ec2.disassociate_iam_instance_profile(
@@ -368,6 +379,7 @@ def disassociate_role_with_instance():
 
 
 def associate_iam_instance_profile():
+    global instance_id
     response = ec2.associate_iam_instance_profile(
         IamInstanceProfile={
             'Arn': instance_profile_arn,
@@ -387,26 +399,32 @@ def associate_iam_instance_profile():
     menu()
 
 
+def list_all_instances():
+    response = ec2.describe_instances()
+    for item in response["Reservations"]:
+        for instance in item["Instances"]:
+            # This will print output entire Dictionary object
+            print('Instances info: ')
+            pretty.pprint(instance)
+            # This will print will output the value of the Dictionary key 'InstanceId'
+            print('Instances IDs: ')
+            print(instance["InstanceId"])
+
+
 # associate created Role with read SSM and KMS Decrypt ParamStore Policy with your Instance
 # aws ec2 describe-iam-instance-profile-associations
 # --filters "Name=instance-id,Values=i-0796d6d94492924db" --output text
 # arn:aws:ssm:us-east-1:461181574132:parameter/nda/sql
 def handle_associations():
+    global association_id
+    global instance_id
     association_id = '[]'
     association_state = ''
     answer = input(
         "Do you want to attach the created role with SSM ParamStore access policy to your instance(y)?"
     )
     if answer == 'y' or answer == 'Y':
-        response = ec2.describe_instances()
-        for reservation in response["Reservations"]:
-            for instance in reservation["Instances"]:
-                # This sample print will output entire Dictionary object
-                print('Instances info: ')
-                pretty.pprint(instance)
-                # This will print will output the value of the Dictionary key 'InstanceId'
-                print('Instances IDs: ')
-                print(instance["InstanceId"])
+        list_all_instances()
         instance_id = input(
             'To attach the new role to the Instance Profile of your EC2 instance please enter instance ID: '
         )
@@ -416,7 +434,7 @@ def handle_associations():
                     {"Name": "instance-id", "Values": [instance_id]}
                 ]
             )
-            if list_of_associations['IamInstanceProfileAssociations'] != '[]':
+            if list_of_associations['IamInstanceProfileAssociations'] != []:
                 association_id = list_of_associations['IamInstanceProfileAssociations'][0]['AssociationId']
                 association_state = list_of_associations['IamInstanceProfileAssociations'][0]['State']
                 print("Association ID: ", association_id, '\nAssociation state: ', association_state)
@@ -432,30 +450,11 @@ def handle_associations():
         print('Exiting...')
         menu()
 
+
 # handle_associations()
 
 def menu():
-
-
-
-    global key_id_is
-
-    global iam_policy_ec2arn
-    global iam_policy_ec2
-    global iamPolicyKMS
     global menu_answer
-    global parametersPath
-    global key_arn_is
-    global association_id
-    global instance_id
-    global instance_profile_arn
-    global secret_path
-    global secret_name
-    global secret_value
-    global secret_description
-    global secret_name_full
-    global parameter_arn_is
-    global kms_keys
     print("""
     '1'="Create a new Parameter store with encryption Key, Key Policy, EC2 role attached to the instance"
     '2'="Add/update parameter in ParamStore. KeyArn, ParamStore path are required"
@@ -487,6 +486,7 @@ def menu():
     else:
         print("Unknown option selected!")
         menu()
+
 
 if __name__ == '__main__':
     menu()
