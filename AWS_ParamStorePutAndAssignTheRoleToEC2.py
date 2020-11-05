@@ -7,25 +7,8 @@ import pprint
 
 logger = logging.getLogger(__name__)
 
-global key_id_is
-global iam_policy_ec2arn
-global iam_policy_ec2
-global iamPolicyKMS
-global menu_answer
-global parametersPath
-global key_arn_is
-global association_id
-global instance_id
-global instance_profile_arn
-global secret_path
-global secret_name
-global secret_value
-global secret_description
-global secret_name_full
-global parameter_arn_is
-global kms_keys
-
-welcome = "Welcome to the AWS SSM ParamStore. The app may put secrets to ParamStore, create related policies, roles, and instance profile"
+welcome = "Welcome to the AWS SSM ParamStore. " \
+          "The app may put secrets to ParamStore, create related policies, roles, and instance profile"
 print('-' * len(welcome))
 print(welcome)
 print('-' * len(welcome))
@@ -148,8 +131,8 @@ def get_var():
     global kms_alias_name
     project_name = input('Enter your project name:')
     iam_policy_name_for_the_kms = input('IAM Policy Name For The KMS (for ex. <project>-KMS)): ')
-    iam_policy_description_for_the_kms = 'Project:' \
-                                         + project_name + '. Grants Encrypt\Decrypt permissions for the KMS Key usage'
+    iam_policy_description_for_the_kms = 'Project:' + project_name + '. Grants Encrypt\Decrypt permissions for the ' \
+                                                                     'KMS Key usage '
     kms_key_description = project_name + ' Key'
     iam_policy_name_for_the_ec2 = input('IAM Policy Name For The EC2(for ex. <project>-EC2)): ')
     iam_policy_description_for_the_kms = 'Project:' + project_name + '- Grants GetParameter and Decrypt permissions'
@@ -351,6 +334,8 @@ def associate_role():
 # Attach the Policy to the Role:
 def attach_policy():
     global iam_policy_ec2
+    global ec2_get_ssm_role
+    global iam_policy_name_for_the_ec2
     try:
         response = iam.put_role_policy(RoleName=ec2_get_ssm_role, PolicyName=iam_policy_name_for_the_ec2,
                                        PolicyDocument=iam_policy_ec2)
@@ -414,7 +399,7 @@ def list_all_instances():
 # associate created Role with read SSM and KMS Decrypt ParamStore Policy with your Instance
 # aws ec2 describe-iam-instance-profile-associations
 # --filters "Name=instance-id,Values=i-0796d6d94492924db" --output text
-# arn:aws:ssm:us-east-1:461181574132:parameter/nda/sql
+
 def handle_associations():
     global association_id
     global instance_id
@@ -434,7 +419,7 @@ def handle_associations():
                     {"Name": "instance-id", "Values": [instance_id]}
                 ]
             )
-            if list_of_associations['IamInstanceProfileAssociations'] != []:
+            if list_of_associations['IamInstanceProfileAssociations']:
                 association_id = list_of_associations['IamInstanceProfileAssociations'][0]['AssociationId']
                 association_state = list_of_associations['IamInstanceProfileAssociations'][0]['State']
                 print("Association ID: ", association_id, '\nAssociation state: ', association_state)
@@ -451,10 +436,9 @@ def handle_associations():
         menu()
 
 
-# handle_associations()
-
 def menu():
     global menu_answer
+    global key_id_is
     print("""
     '1'="Create a new Parameter store with encryption Key, Key Policy, EC2 role attached to the instance"
     '2'="Add/update parameter in ParamStore. KeyArn, ParamStore path are required"
